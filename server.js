@@ -16,7 +16,7 @@ const crypto = require('crypto');
 const db = require("./dbconfig");
 
 const app = express();
-const PORT = 3003; // Use 3003 to avoid EADDRINUSE on 3002
+const PORT = 3000; // Use 3000 to avoid EADDRINUSE on 3002
 
 // Configure separate session stores for users and admins
 const MySQLStore = require('express-mysql-session')(session);
@@ -2527,3 +2527,4 @@ app.post("/booking/cancel/:bookingId", async (req, res) => {
     process.exit(1);
   }
 })();
+
