@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Management</title>
+<style>
+body {
+  background: url('bg.jpg') center/cover no-repeat fixed; /* ✅ fixed full-screen background */
+  font-family: 'Poppins', sans-serif;
+  color: white;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  max-width: 1100px;
+  margin: 50px auto;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 180, 216, 0.5);
+  position: relative;
+}
+
+h1 {
+  text-align: center;
+  color: #00b4d8;
+  margin-bottom: 20px;
+}
+
+#searchSection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+label {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+select, input, button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+}
+
+select, input {
+  background: rgba(255, 255, 255, 0.8);
+  color: #000;
+  min-width: 150px;
+}
+
+button {
+  background: #00b4d8;
+  color: black;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  background: #0090b0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  text-align: center;
+}
+
+th, td {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px;
+}
+
+th {
+  background: rgba(0, 180, 216, 0.4);
+  color: black;
+}
+
+td {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.nav-btn {
+  position: absolute;
+  top: 15px;
+  background: #00b4d8;
+  color: black;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0, 180, 216, 0.5);
+}
+
+.nav-btn:hover {
+  background: #0090b0;
+}
+
+.back-btn { left: 15px; }
+.home-btn { right: 15px; }
+
+.action-btn { margin: 2px; }
+
+#removedFlights {
+  margin-bottom: 15px;
+}
+
+.removed-flight-btn {
+  margin: 2px;
+  background: #ff4c4c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.removed-flight-btn:hover {
+  background: #d13939;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+  <button class="nav-btn back-btn" onclick="goBack()">⬅ Back</button>
+  <button class="nav-btn home-btn" onclick="goHome()">🏠 Home</button>
+  <h1 id="pageTitle">Flight Management</h1>
+
+  <!-- Search Section -->
+  <div id="searchSection">
+    <label>Source:</label>
+    <select id="sourceSelect"></select>
+    <label>Destination:</label>
+    <select id="destinationSelect"></select>
+    <label>Date:</label>
+    <input type="date" id="flightDate">
+    <button onclick="searchFlights()">Search Flights</button>
+    <button onclick="addFlight(true)">Add Flight</button>
+  </div>
+
+  <!-- Removed Flights -->
+  <div id="removedFlights"></div>
+
+  <div id="flightDetails"></div>
+</div>
+
+<script>
+// Back & Home buttons
+function goBack(){ window.location.href = "admin_dashboard.html"; }
+function goHome(){ window.location.href = "admin_dashboard.html"; }
+
+// Cities list
+const cities = [
+  "Bengaluru (BLR)", "Chennai (MAA)", "Delhi (DEL)", "Mumbai (BOM)", "Kolkata (CCU)",
+  "Hyderabad (HYD)", "Goa (GOI)", "Pune (PNQ)", "Jaipur (JAI)", "Ahmedabad (AMD)",
+  "Lucknow (LKO)", "Guwahati (GAU)", "Cochin (COK)", "Patna (PAT)", "Nagpur (NAG)",
+  "Bhubaneswar (BBI)", "Visakhapatnam (VTZ)", "Indore (IDR)", "Coimbatore (CJB)", "Mangalore (IXE)"
+];
+const sourceSelect = document.getElementById('sourceSelect');
+const destSelect = document.getElementById('destinationSelect');
+cities.forEach(c => { sourceSelect.add(new Option(c,c)); destSelect.add(new Option(c,c)); });
+
+// Base flight schedules
+const flightSchedules = {
+  "Monday": ["Air India","IndiGo","SpiceJet"],
+  "Tuesday": ["GoAir","Vistara","Akasa Air"],
+  "Wednesday": ["AirAsia","IndiGo","Vistara"],
+  "Thursday": ["SpiceJet","Air India","GoAir"],
+  "Friday": ["Vistara","Akasa Air","IndiGo"],
+  "Saturday": ["GoAir","Air India","AirAsia"],
+  "Sunday": ["Akasa Air","SpiceJet","Vistara"]
+};
+const baseTimes = {
+  "Monday":["06:00","10:30","15:00"],"Tuesday":["07:00","11:00","16:00"],
+  "Wednesday":["08:00","12:30","18:00"],"Thursday":["09:00","13:30","19:00"],
+  "Friday":["06:45","11:15","17:30"],"Saturday":["07:15","12:45","20:15"],
+  "Sunday":["09:30","14:30","21:00"]
+};
+
+// Flights DB
+let flights = []; 
+let removedFlights = []; // store deleted flights
+
+function computeArrival(depTime){ 
+  const [h,m]=depTime.split(":").map(Number); 
+  const totalMin=h*60+m+120; 
+  const newH=Math.floor(totalMin/60)%24; 
+  const newM=totalMin%60; 
+  return `${String(newH).padStart(2,'0')}:${String(newM).padStart(2,'0')}`; 
+}
+
+function getDuration(dep,arr){ 
+  const [h1,m1]=dep.split(":").map(Number); 
+  const [h2,m2]=arr.split(":").map(Number); 
+  let diff=(h2*60+m2)-(h1*60+m1); 
+  if(diff<0) diff+=1440; 
+  return `${Math.floor(diff/60)}h ${diff%60}m`; 
+}
+
+// Format date dd/mm/yyyy
+function formatDateDMY(dateStr){ 
+  let d, m, y;
+  if(dateStr.includes('/')){ 
+    [d,m,y] = dateStr.split('/');
+  } else { 
+    [y,m,d] = dateStr.split('-');
+  }
+  return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`;
+}
+
+// Search flights
+function searchFlights(){
+  const source = sourceSelect.value;
+  const destination = destSelect.value;
+  const date = document.getElementById('flightDate').value;
+
+  if(!source || !destination || !date){ alert("Select source, destination, date"); return;}
+  if(source===destination){ alert("Source and destination cannot be same"); return;}
+  
+  const weekday = new Date(date).toLocaleDateString('en-US',{weekday:'long'});
+  const names = flightSchedules[weekday];
+  const depTimes = baseTimes[weekday];
+  
+  flights = names.map((f,i)=>{
+    const flightID = 'FL'+Math.floor(Math.random()*9999);
+    const dep = depTimes[i];
+    const arr = computeArrival(dep);
+    const price = 3500 + i*700;
+    const capacity = 100;
+    return {flightID,fname:f,source,destination,date:formatDateDMY(date),dep,arr,duration:getDuration(dep,arr),price,capacity,booked:0};
+  });
+  
+  renderFlights();
+}
+
+// Render flights table
+function renderFlights(){
+  // Render removed flights as clickable restore buttons
+  let removedHtml = "";
+  if(removedFlights.length>0){
+    removedHtml = "<strong>Removed Flights:</strong> ";
+    removedFlights.forEach((f,i)=>{
+      removedHtml += `<button class="removed-flight-btn" onclick="restoreFlight(${i})">${f.fname} (${f.source}→${f.destination} on ${f.date})</button>`;
+    });
+  }
+  document.getElementById('removedFlights').innerHTML = removedHtml;
+
+  if(!flights.length){ document.getElementById('flightDetails').innerHTML="<p>No flights available.</p>"; return;}
+  let html=`<table>
+    <tr>
+      <th>Flight ID</th><th>Flight Name</th><th>From</th><th>To</th><th>Date</th>
+      <th>Departure</th><th>Arrival</th><th>Duration</th><th>Price</th><th>Capacity</th><th>Action</th>
+    </tr>`;
+  
+  flights.forEach(f=>{
+    html+=`<tr>
+      <td>${f.flightID}</td><td>${f.fname}</td><td>${f.source}</td><td>${f.destination}</td>
+      <td>${formatDateDMY(f.date)}</td><td>${f.dep}</td><td>${f.arr}</td><td>${f.duration}</td>
+      <td>₹${f.price}</td><td>${f.capacity}</td>
+      <td>
+        <button class="action-btn" onclick="editFlight('${f.flightID}')">Edit</button>
+        <button class="action-btn" onclick="removeFlight('${f.flightID}')">Remove</button>
+        <button class="action-btn" onclick="addFlight(false)">Add</button>
+      </td></tr>`;
+  });
+  html+="</table>";
+  document.getElementById('flightDetails').innerHTML=html;
+}
+
+// Admin functions
+function editFlight(flightID){
+  const f = flights.find(fl=>fl.flightID===flightID);
+  if(!f) return;
+  const newCap = parseInt(prompt("Enter new capacity:", f.capacity));
+  if(isNaN(newCap) || newCap<f.booked){ alert("Invalid capacity"); return;}
+  f.capacity=newCap; renderFlights();
+}
+
+function removeFlight(flightID){ 
+  if(!confirm("Delete flight?")) return; 
+  const index = flights.findIndex(f=>f.flightID===flightID);
+  if(index !== -1){
+    removedFlights.push(flights[index]); 
+    flights.splice(index,1);
+    renderFlights();
+  }
+}
+
+function restoreFlight(index){
+  flights.push(removedFlights[index]);
+  removedFlights.splice(index,1);
+  renderFlights();
+}
+
+function addFlight(fromTopButton){
+  const fname = prompt("Flight Name:");
+  if(!fname) return;
+  const source = prompt("Source:");
+  if(!source) return;
+  const destination = prompt("Destination:");
+  if(!destination) return;
+  const dateInput = prompt("Date (dd/mm/yyyy):");
+  if(!dateInput) return;
+  const date = formatDateDMY(dateInput);
+  const dep = prompt("Departure time (HH:MM):");
+  if(!dep) return;
+  const arr = prompt("Arrival time (HH:MM):");
+  if(!arr) return;
+  const price = parseInt(prompt("Price:")) || 3500;
+  const capacity = parseInt(prompt("Capacity:")) || 100;
+  const flightID = 'FL'+Math.floor(Math.random()*9999);
+  
+  flights.push({flightID,fname,source,destination,date,dep,arr,duration:getDuration(dep,arr),price,capacity,booked:0});
+  renderFlights();
+}
+</script>
+</body>
+</html>

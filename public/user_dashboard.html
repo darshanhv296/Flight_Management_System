@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading User Dashboard...</title>
+<style>
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: url('bg.jpg') center/cover no-repeat fixed;
+  color: white;
+  display: flex;
+  height: 100vh;
+}
+
+/* Left Sidebar */
+.sidebar {
+  width: 260px;
+  background: rgba(0, 0, 0, 0.7);
+  box-shadow: 2px 0 20px rgba(0,180,216,0.4);
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Sidebar Heading */
+.sidebar h2 {
+  color: #00b4d8;
+  text-align: center;
+  margin-bottom: 30px;
+  text-shadow: 0 0 8px rgba(0,180,216,0.8);
+}
+
+/* Buttons */
+.sidebar button {
+  background: #00b4d8;
+  color: black;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(0,180,216,0.5);
+  width: 100%;
+  font-size: 16px;
+}
+.sidebar button:hover {
+  background: #0090b0;
+  transform: scale(1.05);
+}
+
+/* Logout Button */
+.logout-btn {
+  background: crimson;
+  color: white;
+  margin-top: auto;
+}
+.logout-btn:hover {
+  background: #a80000;
+}
+
+/* Main Content */
+.main-content {
+  flex: 1;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.main-content h1 {
+  color: #00b4d8;
+  text-shadow: 0 0 10px rgba(0,180,216,0.8);
+}
+</style>
+</head>
+<body>
+
+<!-- Sidebar Menu -->
+<div class="sidebar">
+  <h2>🛫 User Panel</h2>
+
+  <button onclick="openPage('book.html')">✈️ Book Flight</button>
+  <button onclick="openPage('confirm.html')">📋 My Tickets</button>
+
+  <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+</div>
+
+<!-- Main Display -->
+<div class="main-content">
+  <h1>Welcome, <span id="username">User</span> 👋</h1>
+</div>
+
+<script src="script.js"></script>
+<script>
+// Load user data and handle auto-login
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    // First try auto-login if needed
+    const loggedIn = await checkAutoLogin();
+    
+    // Then fetch current user info
+    const infoRes = await fetch('/info', {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+
+    const infoData = await infoRes.json();
+    
+    if (infoData.role === 'guest') {
+      // Not logged in - redirect to login
+      window.location.href = 'index.html';
+      return;
+    }
+    
+    // Update username if available
+    const username = infoData.user?.username || localStorage.getItem('username') || 'User';
+    document.getElementById('username').textContent = username;
+    document.title = `${username}'s Dashboard`;
+    
+    // Store user info if available
+    if (infoData.user?.user_id) {
+      localStorage.setItem('user_id', infoData.user.user_id);
+      localStorage.setItem('username', username);
+      localStorage.setItem('role', 'user');
+    }
+  } catch (err) {
+    console.error('Error loading user data:', err);
+    // On error, redirect to login
+    window.location.href = 'index.html';
+  }
+});
+
+// Simple navigation function
+function openPage(page) {
+  window.location.href = page;
+}
+
+// Simple logout function
+function logout() {
+  if (confirm('Are you sure you want to logout?')) {
+    localStorage.clear();
+    window.location.href = 'index.html';
+  }
+}
+</script>
+
+</body>
+</html>

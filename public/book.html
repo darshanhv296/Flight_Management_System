@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book or Manage Flights</title>
+<style>
+body {
+  background: url('bg.jpg') center/cover no-repeat fixed; /* ✅ Fixed background */
+  font-family: 'Poppins', sans-serif;
+  color: white;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  max-width: 800px;
+  margin: 50px auto;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(0, 180, 216, 0.5);
+  position: relative;
+}
+
+h1 {
+  text-align: center;
+  color: #00b4d8;
+  margin-bottom: 25px;
+  text-shadow: 0 0 10px rgba(0,180,216,0.6);
+}
+
+label {
+  display: block;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+select,
+input,
+button {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  border: none;
+  border-radius: 6px;
+}
+
+select,
+input {
+  background: rgba(255, 255, 255, 0.8);
+  color: #000;
+}
+
+button {
+  background: #00b4d8;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(0,180,216,0.4); /* ✅ Glow effect */
+}
+
+button:hover {
+  background: #0090b0;
+  transform: scale(1.05);
+  box-shadow: 0 0 15px #00b4d8;
+}
+
+.home-btn {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: #00b4d8;
+  color: black;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  width: auto;
+  display: inline-block;
+  box-shadow: 0 0 10px rgba(0,180,216,0.6);
+  transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.home-btn:hover {
+  background: #0090b0;
+  transform: scale(1.08);
+  box-shadow: 0 0 15px #00b4d8;
+}
+
+.admin-tools {
+  text-align: center;
+  margin-top: 20px;
+  display: none;
+}
+
+.admin-tools button {
+  width: auto;
+  padding: 10px 18px;
+  margin: 10px;
+  border-radius: 8px;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+  <button class="home-btn" onclick="goHome()">🏠 Home</button>
+  <h1 id="pageTitle">✈️ Book Your Flight</h1>
+
+  <form id="bookingForm">
+    <label for="source">Source:</label>
+    <select id="source" required></select>
+
+    <label for="destination">Destination:</label>
+    <select id="destination" required></select>
+
+    <label for="date">Date of Journey:</label>
+    <input type="date" id="date" required>
+
+    <label for="class">Class:</label>
+    <select id="class" required>
+      <option value="Economy">Economy</option>
+      <option value="Business">Business</option>
+      <option value="First">First</option>
+    </select>
+
+    <label for="gender">Gender:</label>
+    <select id="gender" required>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+      <option value="Other">Other</option>
+    </select>
+
+    <button type="button" id="searchBtn" onclick="searchFlights()">Search Flights</button>
+  </form>
+
+  <div class="admin-tools" id="adminTools">
+    <button onclick="addFlight()">➕ Add Flight</button>
+    <button onclick="cancelFlight()">❌ Cancel Flight</button>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  populateCities();
+  checkUserRole();
+});
+
+function populateCities() {
+  const cities = [
+    "Bengaluru (BLR)", "Chennai (MAA)", "Delhi (DEL)", "Mumbai (BOM)", "Kolkata (CCU)",
+    "Hyderabad (HYD)", "Goa (GOI)", "Pune (PNQ)", "Jaipur (JAI)", "Ahmedabad (AMD)",
+    "Lucknow (LKO)", "Guwahati (GAU)", "Cochin (COK)", "Patna (PAT)", "Nagpur (NAG)",
+    "Bhubaneswar (BBI)", "Visakhapatnam (VTZ)", "Indore (IDR)", "Coimbatore (CJB)", "Mangalore (IXE)"
+  ];
+  const src = document.getElementById('source');
+  const dst = document.getElementById('destination');
+  cities.forEach(city => {
+    src.add(new Option(city, city));
+    dst.add(new Option(city, city));
+  });
+}
+
+function checkUserRole() {
+  const role = localStorage.getItem('role');
+  const adminTools = document.getElementById('adminTools');
+  const title = document.getElementById('pageTitle');
+
+  if (role === 'admin') {
+    title.textContent = "🛫 Manage Flights";
+    adminTools.style.display = 'block';
+    document.getElementById('searchBtn').textContent = 'View Flights';
+  } else {
+    title.textContent = "✈️ Book Your Flight";
+    adminTools.style.display = 'none';
+  }
+}
+
+function searchFlights() {
+  const source = document.getElementById('source').value;
+  const destination = document.getElementById('destination').value;
+  const date = document.getElementById('date').value;
+  const flightClass = document.getElementById('class').value;
+  const gender = document.getElementById('gender').value;
+
+  if (!source || !destination || !date) {
+    alert("Please select source, destination, and date.");
+    return;
+  }
+  if (source === destination) {
+    alert("Source and destination cannot be the same!");
+    return;
+  }
+
+  const weekday = new Date(date).toLocaleDateString('en-us', { weekday: 'long' });
+  const searchData = { source, destination, date, weekday, flightClass, gender };
+  localStorage.setItem('searchData', JSON.stringify(searchData));
+
+  window.location.href = 'flights.html';
+}
+
+function addFlight() {
+  window.location.href = "add_flight.html";
+}
+
+function cancelFlight() {
+  window.location.href = "cancel_flight.html";
+}
+
+// ✅ Home button always redirects to user_dashboard.html
+function goHome() {
+  window.location.href = 'user_dashboard.html';
+}
+</script>
+
+</body>
+</html>

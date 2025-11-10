@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Available Flights</title>
+
+<style>
+body {
+  background: url('bg.jpg') center/cover no-repeat fixed; /* ✅ Fixed background */
+  font-family: 'Poppins', sans-serif;
+  color: white;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  max-width: 900px;
+  margin: 50px auto;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 180, 216, 0.5);
+  position: relative;
+}
+
+h1 {
+  text-align: center;
+  color: #00b4d8;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px rgba(0,180,216,0.6);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  text-align: center;
+  backdrop-filter: blur(4px); /* subtle glass effect */
+}
+
+th, td {
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 10px;
+}
+
+th {
+  background: rgba(0,180,216,0.4);
+  color: black;
+}
+
+td {
+  background: rgba(255,255,255,0.1);
+}
+
+button {
+  background: #00b4d8;
+  color: black;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 10px rgba(0,180,216,0.5); /* ✅ glow */
+}
+
+button:hover {
+  background: #0090b0;
+  transform: scale(1.05);
+  box-shadow: 0 0 15px #00b4d8;
+}
+
+.nav-btn {
+  position: absolute;
+  top: 15px;
+  background: #00b4d8;
+  color: black;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  width: auto;
+  box-shadow: 0 0 10px rgba(0,180,216,0.6);
+  transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+}
+
+.nav-btn:hover {
+  background: #0090b0;
+  transform: scale(1.08);
+  box-shadow: 0 0 15px #00b4d8;
+}
+
+.back-btn { left: 15px; }
+.home-btn { right: 15px; }
+</style>
+
+
+</head>
+<body>
+
+<div class="container">
+  <button class="nav-btn back-btn" onclick="history.back()">⬅ Back</button>
+  <button class="nav-btn home-btn" onclick="goHome()">🏠 Home</button>
+
+  <h1 id="pageTitle">Available Flights</h1>
+  <div id="flightDetails"></div>
+</div>
+
+<script>
+// ✅ Determine user role (Admin/User)
+const role = localStorage.getItem('role') || 'user'; // default = user
+
+// ✅ Home button now always goes to user_dashboard.html
+function goHome() {
+  window.location.href = "user_dashboard.html";
+}
+
+// ✅ Base flight schedule
+const flightSchedules = {
+  "Monday": ["Air India", "IndiGo", "SpiceJet"],
+  "Tuesday": ["GoAir", "Vistara", "Akasa Air"],
+  "Wednesday": ["AirAsia", "IndiGo", "Vistara"],
+  "Thursday": ["SpiceJet", "Air India", "GoAir"],
+  "Friday": ["Vistara", "Akasa Air", "IndiGo"],
+  "Saturday": ["GoAir", "Air India", "AirAsia"],
+  "Sunday": ["Akasa Air", "SpiceJet", "Vistara"]
+};
+
+const baseTimes = {
+  "Monday": ["06:00", "10:30", "15:00"],
+  "Tuesday": ["07:00", "11:00", "16:00"],
+  "Wednesday": ["08:00", "12:30", "18:00"],
+  "Thursday": ["09:00", "13:30", "19:00"],
+  "Friday": ["06:45", "11:15", "17:30"],
+  "Saturday": ["07:15", "12:45", "20:15"],
+  "Sunday": ["09:30", "14:30", "21:00"]
+};
+
+function computeArrival(depTime) {
+  const [h, m] = depTime.split(":").map(Number);
+  const dur = 2 + Math.floor((h + m) % 2);
+  const totalMin = h * 60 + m + dur * 60;
+  const newH = Math.floor(totalMin / 60) % 24;
+  const newM = totalMin % 60;
+  return `${String(newH).padStart(2,'0')}:${String(newM).padStart(2,'0')}`;
+}
+function getDuration(dep, arr) {
+  const [h1, m1] = dep.split(":").map(Number);
+  const [h2, m2] = arr.split(":").map(Number);
+  let diff = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (diff < 0) diff += 24 * 60;
+  return `${Math.floor(diff / 60)}h ${diff % 60}m`;
+}
+function generateFlightID(index, weekday) {
+  const prefix = weekday.substring(0, 2).toUpperCase();
+  const num = 1000 + index * 25 + weekday.length * 7;
+  return `FL${prefix}${num}`;
+}
+function formatDate(dateStr) {
+  const [y, m, d] = dateStr.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const data = JSON.parse(localStorage.getItem('searchData'));
+  if (!data) {
+    document.getElementById('flightDetails').innerHTML = "<p>No flight data found. Please search again.</p>";
+    return;
+  }
+
+  const { source, destination, date, weekday, flightClass } = data;
+  const formattedDate = formatDate(date);
+  const names = flightSchedules[weekday];
+  const depTimes = baseTimes[weekday];
+
+  let tableHTML = `
+    <table>
+      <tr>
+        <th>Flight ID</th>
+        <th>Flight Name</th>
+        <th>From</th>
+        <th>To</th>
+        <th>Date</th>
+        <th>Departure</th>
+        <th>Arrival</th>
+        <th>Duration</th>
+        <th>Class</th>
+        <th>Price</th>
+        <th>Action</th>
+      </tr>
+  `;
+
+  names.forEach((f, i) => {
+    const flightID = generateFlightID(i, weekday);
+    const dep = depTimes[i];
+    const arr = computeArrival(dep);
+    const duration = getDuration(dep, arr);
+    const basePrice = 3500 + i * 700;
+    const price = flightClass === "Business" ? basePrice * 1.5 : flightClass === "First" ? basePrice * 2 : basePrice;
+
+    tableHTML += `
+      <tr>
+        <td>${flightID}</td>
+        <td>${f}</td>
+        <td>${source}</td>
+        <td>${destination}</td>
+        <td>${formattedDate}</td>
+        <td>${dep}</td>
+        <td>${arr}</td>
+        <td>${duration}</td>
+        <td>${flightClass}</td>
+        <td>₹${price}</td>
+        <td>
+          <button onclick="bookFlight('${flightID}','${f}','${source}','${destination}','${formattedDate}','${duration}','${price}')">Book</button>
+        </td>
+      </tr>
+    `;
+  });
+
+  tableHTML += "</table>";
+  document.getElementById("flightDetails").innerHTML = tableHTML;
+});
+
+function bookFlight(flightId, fname, source, destination, date, duration, price) {
+  const ticketDetails = { flightId, fname, source, destination, date, duration, price };
+  localStorage.setItem("ticketDetails", JSON.stringify(ticketDetails));
+  window.location.href = "payment.html";
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FMS User/Admin Login</title>
+<script src="script.js"></script>
+<style>
+body {
+  font-family: 'Poppins', sans-serif;
+  background: url('bg.jpg') center/cover no-repeat;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+.container {
+  width: 400px;
+  padding: 30px;
+  background: rgba(0,0,0,0.7);
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(255,255,255,0.1);
+}
+input {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 6px;
+  border: none;
+}
+button {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  background: #00b4d8;
+  color: black;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.toggle-btn {
+  text-align:center;
+  cursor:pointer;
+  color:#00b4d8;
+  text-decoration: underline;
+}
+.show-pass {
+  display: flex;
+  align-items: center;
+  margin-top: -5px;
+  font-size: 14px;
+}
+hr {
+  border: 0.5px solid #333;
+  margin: 25px 0;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Flight Management System</h1>
+
+
+  <!-- Role Selection -->
+  <div id="roleSelect">
+    <h2>Select Login Type</h2>
+    <button onclick="showUserForm()">User</button>
+    <button onclick="showAdminForm()">Admin</button>
+  </div>
+
+  <!-- User Login/Register -->
+  <div id="userForm" style="display:none;">
+    <h2 id="formTitle">User Login</h2>
+    <input type="text" id="username" placeholder="Username">
+    <div id="emailBox" style="display:none;">
+      <input type="text" id="emailName" placeholder="Email (name only)">
+      <span style="color:#aaa;">@gmail.com</span>
+    </div>
+    <input type="password" id="password" placeholder="Password">
+    <div class="show-pass">
+      <input type="checkbox" id="showPass" onclick="togglePassword()"> Show Password
+    </div>
+    <button id="formBtn" onclick="submitUser()">Login</button>
+    <p class="toggle-btn" onclick="toggleForm()">New user? Register</p>
+    <p class="toggle-btn" onclick="backToMain()">⬅ Back</p>
+  </div>
+
+  <!-- Admin Login -->
+  <div id="adminForm" style="display:none;">
+    <h2>Admin Login</h2>
+    <input type="text" id="adminUser" placeholder="Admin Username">
+    <input type="password" id="adminPass" placeholder="Admin Password">
+    <div class="show-pass">
+      <input type="checkbox" id="showAdminPass" onclick="toggleAdminPassword()"> Show Password
+    </div>
+    <button onclick="adminLogin()">Login as Admin</button>
+    <p class="toggle-btn" onclick="backToMain()">⬅ Back</p>
+  </div>
+</div>
+
+<script>
+let isRegister = false;
+
+// Check session on page load without forced redirects
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res = await fetch('/info', {
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    const data = await res.json();
+    
+    // Store current page session type
+    const pageType = new URLSearchParams(window.location.search).get('type') || 'user';
+    sessionStorage.setItem('login_type', pageType);
+
+  } catch (err) {
+    console.warn('Session check failed:', err);
+  }
+});
+
+function showUserForm(){
+  document.getElementById('roleSelect').style.display = 'none';
+  document.getElementById('userForm').style.display = 'block';
+}
+
+function showAdminForm(){
+  document.getElementById('roleSelect').style.display = 'none';
+  document.getElementById('adminForm').style.display = 'block';
+}
+
+function backToMain(){
+  document.getElementById('userForm').style.display = 'none';
+  document.getElementById('adminForm').style.display = 'none';
+  document.getElementById('roleSelect').style.display = 'block';
+  clearInputs();
+}
+
+function toggleForm(){
+  isRegister = !isRegister;
+  document.getElementById('formTitle').innerText = isRegister ? "User Registration" : "User Login";
+  document.getElementById('emailBox').style.display = isRegister ? "block" : "none";
+  document.getElementById('formBtn').innerText = isRegister ? "Register" : "Login";
+  document.querySelector('.toggle-btn').innerText = isRegister ? "Already have an account? Login" : "New user? Register";
+  clearInputs();
+}
+
+function togglePassword(){
+  const passField = document.getElementById('password');
+  passField.type = passField.type === 'password' ? 'text' : 'password';
+}
+
+function toggleAdminPassword(){
+  const passField = document.getElementById('adminPass');
+  passField.type = passField.type === 'password' ? 'text' : 'password';
+}
+
+function clearInputs(){
+  document.getElementById('username').value = '';
+  document.getElementById('emailName').value = '';
+  document.getElementById('password').value = '';
+  document.getElementById('adminUser').value = '';
+  document.getElementById('adminPass').value = '';
+}
+
+async function submitUser(){
+  try {
+    let username = document.getElementById('username').value.trim();
+    let password = document.getElementById('password').value.trim();
+    let emailName = document.getElementById('emailName').value.trim();
+    let email = emailName ? `${emailName}@gmail.com` : '';
+
+    if(!username || !password){
+      alert('Username and password are required');
+      return;
+    }
+
+    // Disable form while processing
+    const formBtn = document.getElementById('formBtn');
+    const originalText = formBtn.innerText;
+    formBtn.disabled = true;
+    formBtn.innerText = 'Processing...';
+
+    if(isRegister){
+      if(!emailName){
+        alert('Please enter your email name part (before @gmail.com)');
+        formBtn.disabled = false;
+        formBtn.innerText = originalText;
+        return;
+      }
+
+      const res = await fetch('/user/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        credentials: 'include',
+        body: JSON.stringify({username, password, email})
+      });
+
+      const data = await res.json();
+      if(data.success){ 
+          alert('✅ Registered successfully! You can now login.');
+        toggleForm();
+        clearInputs();
+      } else {
+        alert('❌ ' + (data.error || data.message));
+      }
+    } else {
+  // Store session type
+  sessionStorage.setItem('login_type', 'user');
+
+        // store tab credentials so payment and other pages can auto-login if session cookie is missing
+        try { storeTabCredentials(username, password, false); } catch(e){}
+
+        const res = await fetch('/user/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        credentials: 'include',
+        body: JSON.stringify({username, password})
+      });
+
+      const data = await res.json();
+      if(data.success){
+        // Always open in same tab
+        window.location.href = 'user_dashboard.html';
+      } else {
+        alert('❌ ' + (data.error || data.message));
+      }
+    }
+
+    formBtn.disabled = false;
+    formBtn.innerText = originalText;
+  } catch (err) {
+    console.error('Login/Register error:', err);
+    alert('❌ An error occurred. Please try again.');
+    document.getElementById('formBtn').disabled = false;
+  }
+}
+
+// ADMIN LOGIN with proper session handling
+async function adminLogin(){
+  try {
+    const username = document.getElementById('adminUser').value.trim();
+    const password = document.getElementById('adminPass').value.trim();
+
+    if(!username || !password){
+      alert('⚠️ Enter admin username and password');
+      return;
+    }
+
+    // Disable button while processing
+    const adminBtn = document.querySelector('#adminForm button');
+    const originalText = adminBtn.innerText;
+    adminBtn.disabled = true;
+    adminBtn.innerText = 'Logging in...';
+
+  // Store admin session type
+  sessionStorage.setItem('login_type', 'admin');
+
+    const res = await fetch('/admin/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      credentials: 'include',
+      body: JSON.stringify({username, password})
+    });
+
+    const data = await res.json();
+    
+    if(data.success){
+      // store admin tab creds for auto-login
+      try { storeTabCredentials(username, password, true); } catch (e) {}
+      // Always open in same tab
+      window.location.href = 'admin_dashboard.html';
+    } else {
+      alert('❌ Invalid admin credentials');
+    }
+
+    adminBtn.disabled = false;
+    adminBtn.innerText = originalText;
+  } catch (err) {
+    console.error('Admin login error:', err);
+    alert('❌ An error occurred. Please try again.');
+    document.querySelector('#adminForm button').disabled = false;
+  }
+}
+
+// ENTER KEY SUPPORT
+document.addEventListener('keypress', function(e){
+  if(e.key === 'Enter'){
+    const userForm = document.getElementById('userForm').style.display === 'block';
+    const adminForm = document.getElementById('adminForm').style.display === 'block';
+    if(userForm) submitUser();
+    if(adminForm) adminLogin();
+  }
+});
+</script>
+
+</body>
+</html>

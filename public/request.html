@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FMS Support Request</title>
+<style>
+  body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(to right, #06172e, #0b3d91);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    padding: 40px 0;
+  }
+  .wrap {
+    width: 90%;
+    max-width: 600px;
+    background: rgba(0,0,0,0.6);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+  }
+  h1 { margin-top:0; text-align:center; font-size:24px; }
+  label { display:block; margin-top:15px; font-weight:bold; }
+  input[type=text], input[type=email], select, textarea {
+    width:100%; padding:10px; margin-top:5px; border-radius:6px; border:none; outline:none; font-size:14px; background: rgba(255,255,255,0.05); color:#fff;
+  }
+  textarea { min-height:100px; resize:none; }
+  .btn-home { background-color:#7c3aed; color:#fff; position:absolute; top:20px; left:20px; padding:10px 14px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; }
+</style>
+</head>
+<body>
+  <button class="btn-home" onclick="location.href='admin_dashboard.html'">🏠 Home</button>
+  <div class="wrap">
+    <h1>Your Support Request</h1>
+
+    <label for="username">Name</label>
+    <input type="text" id="username" readonly>
+
+    <label for="email">Email</label>
+    <input type="email" id="email" readonly>
+
+    <label for="reason">Reason</label>
+    <input type="text" id="reason" readonly>
+
+    <label for="description">Description</label>
+    <textarea id="description" readonly></textarea>
+  </div>
+
+<script>
+  // Populate fields from sessionStorage
+  window.addEventListener('DOMContentLoaded', function(){
+    document.getElementById('username').value = sessionStorage.getItem('supportUsername') || '';
+    document.getElementById('email').value = sessionStorage.getItem('supportEmail') || '';
+    document.getElementById('reason').value = sessionStorage.getItem('supportReason') || '';
+    document.getElementById('description').value = sessionStorage.getItem('supportDescription') || '';
+  });
+</script>
+</body>
+</html>

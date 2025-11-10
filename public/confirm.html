@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Ticket</title>
+  
+<style>
+body { 
+  background: url('bg.jpg') center/cover no-repeat fixed; /* ✅ background now fixed */
+  font-family: 'Poppins', sans-serif; 
+  color: white; 
+  margin: 0; 
+  padding: 0; 
+}
+
+.container { 
+  background: rgba(0,0,0,0.7); 
+  max-width: 500px;
+  margin: 40px auto;
+  padding: 20px; 
+  border-radius: 15px; 
+  text-align: center; 
+  box-shadow: 0 0 25px rgba(0,180,216,0.5);
+}
+
+h1 { 
+  color: #00b4d8; 
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.ticket-box { 
+  border: 2px dashed #00b4d8; 
+  padding: 15px; 
+  border-radius: 12px; 
+  background: rgba(255,255,255,0.1); 
+  margin-top: 10px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+}
+
+p { margin:10px 0; font-size:16px; }
+
+.nav-btn { 
+  position: absolute; 
+  top: 15px; 
+  background: #00b4d8; 
+  color: black; 
+  border: none; 
+  padding: 6px 14px; 
+  border-radius: 6px; 
+  font-weight: bold; 
+  cursor: pointer; 
+  box-shadow: 0 0 8px rgba(0,180,216,0.5);
+}
+
+.nav-btn:hover { background: #0090b0; }
+
+.back-btn { left: 15px; }
+.home-btn { right: 15px; }
+
+.cancel-btn { 
+  background: #ff4444; 
+  color: white; 
+  border: none; 
+  padding: 10px 20px; 
+  border-radius: 8px; 
+  cursor: pointer; 
+  margin-top: 15px; 
+  font-weight: bold; 
+  box-shadow: 0 0 10px rgba(255,0,0,0.4); 
+}
+
+.cancel-btn:hover { background: #cc0000; }
+
+.cancelled-status { 
+  color: #ff6b6b; 
+  font-weight: bold; 
+  font-size: 18px; 
+}
+
+.cancel-reason { 
+  color: #ffb347; 
+  font-weight: bold; 
+  font-size: 16px; 
+  margin-top: 5px; 
+}
+
+.no-ticket { 
+  color: #ffb347; 
+  font-size: 18px; 
+  font-weight: bold; 
+}
+
+.ticket-section {
+  border: 1px solid rgba(0,180,216,0.3);
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.2);
+}
+
+.ticket-section h3 {
+  color: #00b4d8;
+  margin: 0 0 12px 0;
+  font-size: 16px;
+}
+
+.ticket-section p {
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+.saving-indicator {
+  display: none;
+  color: #00b4d8;
+  font-style: italic;
+  margin-top: 10px;
+}
+
+.save-error {
+  color: #ff4444;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.price-breakdown {
+  background: rgba(0, 180, 216, 0.1);
+  padding: 12px;
+  border-radius: 8px;
+  margin: 8px 0;
+  border: 1px solid rgba(0, 180, 216, 0.3);
+}
+
+.price-breakdown p {
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+.price-breakdown p:last-child {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 180, 216, 0.3);
+}
+</style>
+
+
+</head>
+<body>
+
+<div class="container">
+  <button class="nav-btn back-btn" onclick="history.back()">⬅ Back</button>
+  <button class="nav-btn home-btn" onclick="goHome()">🏠 Home</button>
+
+  <h1>🎫 Flight Ticket Details</h1>
+  <div class="ticket-box" id="ticketDetails"></div>
+  <div id="savingStatus" class="saving-indicator">Saving booking...</div>
+  <div id="saveError" class="save-error"></div>
+</div>
+
+<script>
+// Load ticket & search data
+const ticketContainer = document.getElementById('ticketDetails');
+const savingIndicator = document.getElementById('savingStatus');
+const saveError = document.getElementById('saveError');
+const searchData = JSON.parse(localStorage.getItem('searchData')) || {};
+let ticket = JSON.parse(localStorage.getItem('ticketDetails')) || {};
+
+// Generate ticket ID if not present
+if (!ticket.ticket_id) {
+  ticket.ticket_id = 'TKT-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+  localStorage.setItem('ticketDetails', JSON.stringify(ticket));
+}
+
+function showSavingIndicator(show) {
+  savingIndicator.style.display = show ? 'block' : 'none';
+}
+
+function showError(message) {
+  saveError.textContent = message || '';
+  saveError.style.display = message ? 'block' : 'none';
+}
+
+function renderTicket() {
+  if (!ticket || !ticket.flightId || !ticket.price) {
+    ticketContainer.innerHTML = '<p class="no-ticket">⚠️ No booking found. Please book a flight first.</p>';
+    return;
+  }
+
+  const classType = searchData?.flightClass || ticket.class_type || 'Economy';
+  const isCancelled = ticket.cancelled === true;
+  const cancelButton = !isCancelled ? '<button class="cancel-btn" onclick="goCancel()">Cancel Ticket</button>' : '';
+  const cancelReason = (isCancelled && ticket.cancelReason) ? '<p class="cancel-reason">Reason: ' + ticket.cancelReason + '</p>' : '';
+  
+  const passengerInfo = ticket.passenger_name ? '<p><strong>Passenger:</strong> ' + ticket.passenger_name + '</p>' : '';
+  const contactInfo = ticket.contact_no ? '<p><strong>Contact:</strong> ' + ticket.contact_no + '</p>' : '';
+
+  ticketContainer.innerHTML =
+    '<div class="ticket-section">' +
+      '<h3>🧑‍✈️ Booking Details</h3>' +
+      '<p><strong>User ID:</strong> ' + (ticket.user_id || 'Will be assigned') + '</p>' +
+      passengerInfo + contactInfo +
+    '</div>' +
+    '<div class="ticket-section">' +
+      '<h3>✈️ Flight Details</h3>' +
+      '<p><strong>Ticket ID:</strong> ' + ticket.ticket_id + '</p>' +
+      '<p><strong>Flight ID:</strong> ' + ticket.flightId + '</p>' +
+      '<p><strong>Flight Name:</strong> ' + ticket.fname + '</p>' +
+      '<p><strong>From:</strong> ' + (ticket.source || ticket.from) + '</p>' +
+      '<p><strong>To:</strong> ' + (ticket.destination || ticket.to) + '</p>' +
+      '<p><strong>Date:</strong> ' + ticket.date + '</p>' +
+      '<p><strong>Duration:</strong> ' + ticket.duration + '</p>' +
+      '<p><strong>Class Type:</strong> ' + classType + '</p>' +
+      '<div class="price-breakdown">' +
+      '<p><strong>Base Fare:</strong> ₹' + (ticket.baseFare || ticket.price) + '</p>' +
+      '<p><strong>GST (18%):</strong> ₹' + (ticket.gst || '0.00') + '</p>' +
+      '<p><strong>Convenience Fee:</strong> ₹' + (ticket.convenienceFee || '250.00') + '</p>' +
+      '<p style="color: #00b4d8; font-weight: bold; font-size: 1.1em;"><strong>Total Amount:</strong> ₹' + (ticket.totalAmount || ticket.price) + '</p>' +
+      '<p><strong>Status:</strong> ' + (isCancelled ? '<span class="cancelled-status">❌ Cancelled</span>' : '✅ Booking Confirmed') + '</p>' +
+      cancelReason +
+    '</div>' +
+    cancelButton;
+}
+
+async function saveTicketToDB() {
+  showError('');
+  showSavingIndicator(true);
+
+  try {
+    const bookingData = {
+      ticket_id: ticket.ticket_id,
+      user_id: ticket.user_id,
+      flight_id: ticket.flightId,
+      flight_name: ticket.fname,
+      source: ticket.source || ticket.from,
+      destination: ticket.destination || ticket.to,
+      date: ticket.date,
+      duration: ticket.duration,
+      class_type: searchData?.flightClass || ticket.class_type || 'Economy',
+      price: ticket.totalAmount || ticket.price,
+      username: ticket.username,
+      cancelled: ticket.cancelled || false,
+      cancelReason: ticket.cancelReason || null,
+      status: 'Confirmed'
+    };
+
+    // Save booking first
+    const resp = await fetch('/bookings/save', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' },
+      body: JSON.stringify(bookingData)
+    });
+
+    const result = await resp.json();
+
+    // If booking is saved, save payment data
+    if (result.success) {
+      const paymentData = {
+        ticket_id: ticket.ticket_id,
+        amount: parseFloat(ticket.totalAmount || ticket.price),
+        mode: ticket.payment_mode || 'Card',  // Get payment mode from ticket details
+        booking_details: {
+          user_id: ticket.user_id,
+          flight_id: ticket.flightId,
+          flight_name: ticket.fname,
+          source: ticket.source || ticket.from,
+          destination: ticket.destination || ticket.to,
+          date: ticket.date,
+          duration: ticket.duration,
+          class_type: ticket.class_type || 'Economy',
+          username: ticket.username || 'User'
+        }
+      };
+
+      // Save payment data
+      const paymentResp = await fetch('/api/payments/add', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentData)
+      });
+
+      const paymentResult = await paymentResp.json();
+      if (!paymentResult.success) {
+        throw new Error(paymentResult.error || 'Failed to save payment data');
+      }
+    }
+    
+    if (result && result.success) {
+      showSavingIndicator(false);
+      ticket = {
+        ...ticket,
+        user_id: result.user_id || bookingData.user_id,
+        ticket_id: result.ticket_id || ticket.ticket_id,
+        savedToDB: true
+      };
+      // Save per-user copy if we have a user_id
+      if (ticket.user_id) {
+        try {
+          const perKey = 'ticketDetails_' + ticket.user_id;
+          localStorage.setItem(perKey, JSON.stringify(ticket));
+        } catch (e) {
+          console.warn('Could not save per-user ticket locally:', e);
+        }
+      }
+      localStorage.setItem('ticketDetails', JSON.stringify(ticket));
+      renderTicket();
+    } else {
+      throw new Error(result?.error || 'Failed to save booking');
+    }
+  } catch (err) {
+    console.error('❌ Save error:', err);
+    showError('Error saving booking: ' + (err.message || 'Please try again'));
+    showSavingIndicator(false);
+  }
+}
+
+function goCancel() {
+  window.location.href = 'cancel.html';
+}
+
+// ✅ Home button always goes to user_dashboard
+function goHome() {
+  window.location.href = 'user_dashboard.html';
+}
+
+// Check booking status from server
+async function checkBookingStatus() {
+  if (!ticket || !ticket.ticket_id) return;
+  
+  try {
+    const response = await fetch(`/api/bookings?ticketId=${ticket.ticket_id}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Cache-Control': 'no-cache' }
+    });
+    
+    const data = await response.json();
+    
+    if (data.success && data.bookings && data.bookings.length > 0) {
+      const serverBooking = data.bookings[0];
+
+      // Prefer explicit cancelReason, fall back to legacy reason field
+      const serverReason = serverBooking.cancelReason || serverBooking.reason || null;
+
+      // Update local ticket if server status or reason is different
+      if (serverBooking.cancelled !== ticket.cancelled || serverReason !== ticket.cancelReason) {
+        ticket = {
+          ...ticket,
+          cancelled: serverBooking.cancelled,
+          cancelReason: serverReason,
+          status: serverBooking.status
+        };
+        localStorage.setItem('ticketDetails', JSON.stringify(ticket));
+        renderTicket();
+      }
+    }
+  } catch (err) {
+    console.warn('Status check failed:', err);
+  }
+}
+
+// Init
+async function init() {
+  // Ensure generic ticket storage exists
+  localStorage.setItem('ticketDetails', JSON.stringify(ticket));
+
+  // Check server session info to find logged-in user
+  let sessionUser = null;
+  try {
+    const infoResp = await fetch('/info', { method: 'GET', credentials: 'include' });
+    const info = infoResp ? await infoResp.json() : {};
+    if (info.user && info.user.user_id) sessionUser = info.user.user_id;
+  } catch (e) {
+    console.warn('Session check failed:', e);
+  }
+
+  // If user is logged in, try to load per-user last booking from localStorage or server
+  if (sessionUser) {
+    const perKey = 'ticketDetails_' + sessionUser;
+    const stored = localStorage.getItem(perKey);
+    if (stored) {
+      try {
+        ticket = JSON.parse(stored);
+      } catch (e) { console.warn('Invalid per-user ticket in localStorage, ignoring'); }
+    } else {
+      // Fetch latest booking from server for this user
+      try {
+        const resp = await fetch('/bookings/latest/' + encodeURIComponent(sessionUser), { method: 'GET', credentials: 'include' });
+        const data = await resp.json();
+        if (data && data.success && data.booking) {
+          const b = data.booking;
+          ticket = {
+            ticket_id: b.ticket_id,
+            user_id: b.user_id,
+            flightId: b.flight_id,
+            fname: b.flight_name,
+            source: b.source,
+            destination: b.destination,
+            date: b.date,
+            duration: b.duration,
+            class_type: b.class_type,
+            price: b.price,
+            totalAmount: b.price,
+            cancelled: !!b.cancelled,
+            cancelReason: b.cancelReason || b.reason,
+            savedToDB: true,
+            username: b.username
+          };
+          try { localStorage.setItem(perKey, JSON.stringify(ticket)); } catch (e) { /* ignore */ }
+        }
+      } catch (e) {
+        console.warn('Could not fetch latest booking for user:', e);
+      }
+    }
+  }
+
+  renderTicket();
+
+  // If logged in and booking not saved, auto-save it to server
+  if ((sessionUser || localStorage.getItem('user_id')) && !ticket.savedToDB) {
+    try { await saveTicketToDB(); } catch (e) { console.error('Auto save failed:', e); }
+  }
+
+  // Start periodic status check
+  await checkBookingStatus(); // Initial check
+  setInterval(checkBookingStatus, 5000); // Then every 5 seconds
+}
+
+// Start
+init();
+</script>
+
+</body>
+</html>

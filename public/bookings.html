@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>📋 All User Bookings</title>
+  <style>
+  /* Full-page fixed background */
+  body {
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    padding: 0;
+    color: #fff;
+    text-align: center;
+
+    /* Background image setup */
+    background: 
+      linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),  /* transparent overlay */
+      url('bg.jpg') center center / cover no-repeat fixed;     /* fixed full-screen image */
+
+    background-attachment: fixed; /* ensures image doesn’t scroll */
+    background-size: cover;       /* makes image fill window */
+  }
+
+  header {
+    background: rgba(17, 24, 39, 0.85); /* transparent version of your old color */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    color: #00d8ff;
+    margin: 0 auto;
+    letter-spacing: 1px;
+  }
+
+  .home-btn, .clear-btn {
+    background: #00d8ff;
+    color: #000;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+  }
+
+  .home-btn:hover, .clear-btn:hover {
+    background: #38bdf8;
+    transform: scale(1.05);
+  }
+
+  table {
+    width: 95%;
+    margin: 25px auto;
+    border-collapse: collapse;
+    background: rgba(30, 41, 59, 0.85); /* semi-transparent table background */
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 12px rgba(0,0,0,0.5);
+  }
+
+  th, td {
+    border-bottom: 1px solid rgba(57, 74, 96, 0.5);
+    padding: 10px 14px;
+    text-align: center;
+  }
+
+  th {
+    background: rgba(14, 165, 233, 0.9);
+    color: #000;
+  }
+
+  tr:hover {
+    background: rgba(51, 65, 85, 0.8);
+    transition: 0.2s;
+  }
+
+  #status {
+    margin: 10px auto;
+    color: #f87171;
+    font-size: 0.95rem;
+  }
+
+  #status.ok {
+    color: #22c55e;
+  }
+</style>
+
+
+
+</head>
+<body>
+  <header>
+    <button class="home-btn" onclick="goHome()">🏠 Home</button>
+    <h1 id="pageTitle">📋 Loading...</h1>
+    <button class="clear-btn" onclick="clearBookings()">🗑️ Clear All</button>
+  </header>
+
+  <script>
+  function goHome() {
+    // Always redirect to admin dashboard
+    window.location.href = 'admin_dashboard.html';
+  }
+  
+  // Update page title based on role
+  (async () => {
+    const userInfo = await getUserInfo();
+    if (userInfo) {
+      document.getElementById('pageTitle').textContent = userInfo.role === 'admin' ? 
+        '📋 All User Bookings' : 
+        '📋 My Bookings';
+    }
+  })();
+  </script>
+
+  <div id="status">Connecting to server...</div>
+
+  <table id="bookingTable">
+    <thead>
+      <tr>
+        <th>Sl no</th>
+        <th>User ID</th>
+        <th>Ticket ID</th>
+        <th>Flight ID</th>
+        <th>Flight Name</th>
+        <th>From</th>
+        <th>To</th>
+        <th>Date</th>
+        <th>Duration</th>
+        <th>Class</th>
+        <th>Price</th>
+        <th>Status</th>
+        <th>Cancelled</th>
+        <th>Reason</th>
+        <th>Created At</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="bookingBody">
+      <tr><td colspan="16">Loading bookings...</td></tr>
+    </tbody>
+  </table>
+
+<script>
+const statusDiv = document.getElementById("status");
+const bookingBody = document.getElementById("bookingBody");
+
+// Get user session info from server
+async function getUserInfo() {
+  try {
+    const res = await fetch('/info', { credentials: 'include' });
+    const data = await res.json();
+    
+    if (!data.role || (data.role !== 'admin' && data.role !== 'user')) {
+      // Don't auto-redirect. Show a notice and return null so caller can handle gracefully.
+      statusDiv.textContent = '⚠️ Please log in to view bookings.';
+      statusDiv.className = '';
+      return null;
+    }
+
+    return {
+      role: data.role,
+      userId: data.role === 'user' ? data.user.user_id : null,
+      username: data.role === 'user' ? data.user.username : 'Admin'
+    };
+  } catch (err) {
+    console.error('Session error:', err);
+    statusDiv.textContent = '⚠️ Unable to verify session. Please log in.';
+    statusDiv.className = '';
+    return null;
+  }
+}
+
+  // Cancel individual booking
+async function cancelBooking(bookingId) {
+  if (!bookingId) {
+    alert('Invalid booking ID');
+    return;
+  }
+
+  if (!confirm('Are you sure you want to cancel this booking?')) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/booking/cancel/${bookingId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      credentials: 'include'
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert('Booking cancelled successfully');
+      loadBookings(); // Refresh the bookings list
+    } else {
+      alert(data.message || 'Failed to cancel booking');
+    }
+  } catch (err) {
+    console.error('Error:', err);
+    alert('Error cancelling booking. Please try again.');
+  }
+}
+
+  // Load bookings based on user role
+async function loadBookings() {
+  statusDiv.textContent = "🔄 Loading bookings...";
+  const userInfo = await getUserInfo();
+  if (!userInfo) return;
+  
+  const { role, userId, username } = userInfo;
+  
+  // Debug info
+  console.log('Current user info:', { role, userId, username });
+  
+  try {
+    // Construct endpoint with proper credentials and user context
+    const endpoint = role === 'admin' ? '/admin/bookings' : `/api/bookings?userId=${userId}`;
+    console.log('Fetching from endpoint:', endpoint);
+    
+    const res = await fetch(endpoint, {
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    const data = await res.json();
+    console.log('Response data:', data);
+    
+    if (!data.success || !data.bookings || data.bookings.length === 0) {
+      console.log('No bookings found in response');
+      bookingBody.innerHTML = `<tr><td colspan="16">No bookings found for ${username} (${userId})</td></tr>`;
+      statusDiv.textContent = "✅ No bookings found";
+      statusDiv.className = "ok";
+      return;
+    }    const bookings = data.bookings;
+    
+    // Format date helper function
+    function formatDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr; // Return original if invalid
+        return date.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      } catch (e) {
+        console.warn('Date formatting error:', e);
+        return dateStr;
+      }
+    }
+
+    bookingBody.innerHTML = bookings.map(b => {
+      // Handle cancelled status display
+      const status = b.cancelled ? 'Cancelled' : (b.status || 'Confirmed');
+      const statusStyle = b.cancelled ? 'color: #ef4444;' : 'color: #22c55e;';
+      const userId = b.user_id || (b.username ? b.username : 'Guest');
+      
+      return `
+      <tr>
+        <td>${b.id || '—'}</td>
+        <td>${userId}</td>
+        <td>${b.ticket_id || '—'}</td>
+        <td>${b.flight_id || '—'}</td>
+        <td>${b.flight_name || '—'}</td>
+        <td>${b.source || '—'}</td>
+        <td>${b.destination || '—'}</td>
+        <td>${formatDate(b.date)}</td>
+        <td>${b.duration || '—'}</td>
+        <td>${b.class_type || '—'}</td>
+        <td>${b.price != null ? parseFloat(b.price).toFixed(2) : '—'}</td>
+        <td style="${statusStyle}">${status}</td>
+        <td>${b.cancelled ? 'Yes' : 'No'}</td>
+  <td>${b.cancelReason || b.reason || '—'}</td>
+        <td>${formatDate(b.created_at)}</td>
+        <td>
+          <button class="cancel-btn" 
+                  onclick="cancelBooking('${b.id}')" 
+                  style="background: #dc2626; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; ${b.cancelled ? 'opacity: 0.5;' : ''}"
+                  ${b.cancelled ? 'disabled' : ''}>
+            Cancel
+          </button>
+        </td>
+      </tr>
+    `}).join("");
+
+    statusDiv.textContent = `✅ Loaded ${bookings.length} bookings`;
+    statusDiv.className = "ok";
+
+  } catch (err) {
+    console.error("Error fetching bookings:", err);
+    bookingBody.innerHTML = `<tr><td colspan="16">Error loading bookings</td></tr>`;
+    statusDiv.textContent = "❌ Failed to load bookings";
+    statusDiv.className = "";
+  }
+}
+
+// Clear bookings based on user role
+async function clearBookings() {
+  try {
+    // First verify user session and role
+    const infoRes = await fetch('/info', {
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+    const userInfo = await infoRes.json();
+    
+    // Verify admin privileges
+    if (!userInfo || userInfo.role !== 'admin') {
+      alert("❌ Only administrators can clear all bookings.");
+      return;
+    }
+
+    // Double confirmation for safety
+    if (!confirm("⚠️ WARNING: You are about to delete ALL BOOKINGS from the database.\n\nThis action CANNOT be undone!\n\nAre you absolutely sure?")) {
+      return;
+    }
+    
+    if (!confirm("🚨 FINAL WARNING: This will permanently delete ALL booking records.\n\nClick OK to proceed with deletion.")) {
+      return;
+    }
+
+    // Show loading status
+    const statusDiv = document.getElementById('status');
+    statusDiv.textContent = "🕒 Deleting all bookings from database...";
+    statusDiv.className = "";
+
+    // Disable clear button during operation
+    const clearBtn = document.querySelector('.clear-btn');
+    clearBtn.disabled = true;
+    clearBtn.style.opacity = '0.5';
+
+    const res = await fetch("/admin/delete-all-bookings", {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+      // Update status with count of deleted bookings
+      statusDiv.textContent = `✅ Successfully deleted ${result.count} bookings from the database`;
+      statusDiv.className = "ok";
+      
+      // Clear the bookings table
+      const bookingBody = document.getElementById('bookingBody');
+      bookingBody.innerHTML = '<tr><td colspan="15">No bookings found in database.</td></tr>';
+      
+      // Show success message
+      alert(`✅ Successfully deleted ${result.count} bookings from the database.`);
+    } else {
+      throw new Error(result.message || 'Delete operation failed');
+    }
+  } catch (err) {
+    console.error("Error clearing bookings:", err);
+    const statusDiv = document.getElementById('status');
+    statusDiv.textContent = `❌ Error clearing bookings: ${err.message}`;
+    statusDiv.className = "";
+    alert("❌ Failed to clear bookings. Please try again.");
+  } finally {
+    // Re-enable clear button
+    const clearBtn = document.querySelector('.clear-btn');
+    clearBtn.disabled = false;
+    clearBtn.style.opacity = '1';
+  }
+}
+
+// Cancel individual booking (single implementation — includes credentials so admin session is sent)
+async function cancelBooking(bookingId) {
+  if (!bookingId) {
+    alert('Invalid booking ID');
+    return;
+  }
+
+  const reason = prompt('Please enter cancellation reason:', 'Cancelled by admin');
+  if (!reason) {
+    alert('Cancellation reason is required');
+    return;
+  }
+
+  if (!confirm('Are you sure you want to cancel this booking?')) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/booking/cancel/${bookingId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      body: JSON.stringify({ reason }),
+      credentials: 'include'
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert('Booking cancelled successfully');
+      loadBookings(); // Refresh the bookings list
+    } else {
+      alert(data.message || 'Failed to cancel booking');
+    }
+  } catch (err) {
+    console.error('Error cancelling booking:', err);
+    alert('Error cancelling booking. Please try again.');
+  }
+}
+
+// Load bookings on page load
+loadBookings();
+</script>
+</body>
+</html>

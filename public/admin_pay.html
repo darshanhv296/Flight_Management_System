@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - All Payments Dashboard</title>
+  <style>
+    body {
+      background: url('bg.jpg') center/cover no-repeat fixed;
+      font-family: 'Poppins', sans-serif;
+      color: white;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 30px auto;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,180,216,0.3);
+    }
+    h1 {
+      text-align: center;
+      color: #00b4d8;
+      margin-bottom: 30px;
+    }
+    .nav-btn {
+      position: absolute;
+      top: 15px;
+      background: #00b4d8;
+      color: black;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .nav-btn:hover { background: #0090b0; }
+    .back-btn { left: 15px; }
+    .home-btn { right: 15px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(255,255,255,0.1);
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(0,180,216,0.3);
+    }
+    th {
+      background: rgba(0,180,216,0.2);
+      color: #00b4d8;
+      font-weight: bold;
+    }
+    tr:hover { background: rgba(255,255,255,0.05); }
+
+    .status-success { color: #4CAF50; font-weight: bold; }
+    .status-failed { color: #f44336; font-weight: bold; }
+    .status-pending { color: #FFC107; font-weight: bold; }
+
+    .loading {
+      text-align: center;
+      color: #00b4d8;
+      padding: 20px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <button class="nav-btn back-btn" onclick="history.back()">⬅ Back</button>
+  <button class="nav-btn home-btn" onclick="location.href='admin_dashboard.html'">🏠 Home</button>
+  <button class="nav-btn" id="clearPaymentsBtn" style="right:110px;" title="Clear all payments">🗑️ Clear Payments</button>
+
+    <h1>💳 All Payment Transactions</h1>
+
+    <div id="paymentsTotal" style="font-size:18px;color:#00ffd8;margin-bottom:8px;">Total Amount: ₹0.00</div>
+
+    <div id="loading" class="loading">Loading payments...</div>
+
+    <div style="display:flex; gap:12px; align-items:center; margin-top:8px;">
+      <button id="refreshBtn" style="background:#00b4d8;color:black;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;">Refresh</button>
+      <label style="color:#ddd;font-size:14px;"></label>
+    </div>
+
+    <table id="paymentsTable" style="display:none; margin-top:10px;">
+      <thead id="paymentsHead"></thead>
+      <tbody id="paymentsBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // Directly attempt to load payments; relies on server session cookie for admin auth
+      loadPayments();
+    });
+
+    // Note: checkAdminAuth removed — page now tries to fetch /api/payments immediately and
+    // relies on the server session cookie. If the server responds 403, a friendly message
+    // will be shown instructing the admin to log in via the dashboard.
+
+    async function loadPayments() {
+      try {
+        // Show loading state
+        const loadingEl = document.getElementById('loading');
+        const tableEl = document.getElementById('paymentsTable');
+        loadingEl.style.display = 'block';
+        tableEl.style.display = 'none';
+        loadingEl.textContent = 'Loading payments...';
+
+        console.log('Fetching payments with credentials...');
+        const response = await fetch("/api/payments", {
+          method: 'GET',
+          credentials: 'include',  // Important: Send cookies
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          console.error('Response not OK:', response.status, response.statusText);
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Error details:', errorData);
+          
+          if (response.status === 403) {
+            // Not authorized - likely no admin session cookie present
+            document.getElementById('loading').innerHTML = 
+              '⚠️ Admin access required. Please <a href="admin_dashboard.html" style="color:#00b4d8">log in as admin</a> first.';
+            return;
+          }
+          throw new Error(`Failed to fetch payments: ${errorData.error || response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Received data:', data);
+
+        if (!data.success) {
+          throw new Error(data.error || "Failed to load payments");
+        }
+
+        if (!Array.isArray(data.payments)) {
+          throw new Error("Invalid payment data received");
+        }
+
+        console.log(`Displaying ${data.payments.length} payments`);
+        displayPaymentsRaw(data.payments);
+        
+        // Show table and hide loading
+        loadingEl.style.display = 'none';
+        tableEl.style.display = 'table';
+      } catch (err) {
+        console.error("Payment load error:", err);
+        document.getElementById('loading').innerHTML = `❌ Error: ${err.message}<br><small>Please check console for details</small>`;
+      }
+    }
+
+    // Display payments exactly as returned by backend (raw fields)
+    function displayPaymentsRaw(payments) {
+      const tbody = document.getElementById("paymentsBody");
+      const thead = document.getElementById("paymentsHead");
+      tbody.innerHTML = "";
+      thead.innerHTML = "";
+
+      if (!Array.isArray(payments) || payments.length === 0) {
+        thead.innerHTML = `<tr><th>Info</th></tr>`;
+        tbody.innerHTML = `<tr><td style="text-align:center;padding:20px;">No payment records found</td></tr>`;
+        return;
+      }
+
+      // Build a union set of keys across all payment objects to ensure all fields show
+      const keySet = new Set();
+      payments.forEach(p => Object.keys(p || {}).forEach(k => keySet.add(k)));
+
+      // Preferred column order (only include if present)
+      const preferred = ['payment_id','ticket_id','amount','mode','payment_date','status','user_id','flight_id','created_at'];
+      // Exclude these verbose booking fields per request
+      const excluded = ['username','flight_name','source','destination','class_type'];
+
+      // Build final keys list in preferred order, then append any remaining keys (excluding excluded)
+      const remaining = Array.from(keySet).filter(k => !preferred.includes(k) && !excluded.includes(k));
+      const keys = preferred.filter(k => keySet.has(k)).concat(remaining);
+
+      // Create header row using selected keys
+      const hr = document.createElement('tr');
+      keys.forEach(k => {
+        const th = document.createElement('th');
+        th.textContent = k.replace(/_/g, ' ').toUpperCase();
+        hr.appendChild(th);
+      });
+      // NOTE: total column removed from table — total shown above the table
+      thead.appendChild(hr);
+
+      // Deduplicate payments based on ticket_id
+      const uniquePayments = {};
+      payments.forEach(p => {
+        const key = p.ticket_id;
+        if (!uniquePayments[key] || new Date(p.payment_date) > new Date(uniquePayments[key].payment_date)) {
+          uniquePayments[key] = p;
+        }
+      });
+
+      // Calculate total amount
+      let totalAmount = 0;
+
+      // Populate rows with exact values (stringified where necessary)
+      Object.values(uniquePayments).forEach(p => {
+        const tr = document.createElement('tr');
+        keys.forEach(k => {
+          const td = document.createElement('td');
+          const val = p && Object.prototype.hasOwnProperty.call(p, k) ? p[k] : '';
+          // Show primitive values directly, objects/arrays as JSON
+          if (val === null || val === undefined) {
+            td.textContent = '';
+          } else if (typeof val === 'object') {
+            td.textContent = JSON.stringify(val);
+          } else {
+            td.textContent = String(val);
+          }
+          if (k === 'amount') {
+            totalAmount += parseFloat(val) || 0;
+          }
+          tr.appendChild(td);
+        });
+        
+  // (no per-row total column — amount shown in amount column)
+
+        tbody.appendChild(tr);
+      });
+
+      // Show total at top
+      const totalEl = document.getElementById('paymentsTotal');
+      if (totalEl) totalEl.textContent = `Total Amount: ₹${totalAmount.toFixed(2)}`;
+
+      // Wire up refresh button
+      const refresh = document.getElementById('refreshBtn');
+      if (refresh) {
+        refresh.onclick = () => loadPayments();
+      }
+
+        // Wire up Clear Payments button (top-right)
+        const clearBtn = document.getElementById('clearPaymentsBtn');
+        if (clearBtn) {
+          clearBtn.onclick = async () => {
+            const ok = confirm('Are you sure? This will DELETE ALL payments from the database. This action cannot be undone.');
+            if (!ok) return;
+            try {
+              clearBtn.disabled = true;
+              clearBtn.textContent = 'Clearing...';
+              const resp = await fetch('/admin/clear-payments', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+              });
+              const result = await resp.json();
+              if (!resp.ok || !result.success) {
+                alert('Failed to clear payments: ' + (result.error || resp.statusText));
+              } else {
+                alert(result.message || 'Payments cleared');
+                // Refresh the displayed payments
+                loadPayments();
+              }
+            } catch (err) {
+              console.error('Clear payments error:', err);
+              alert('Error clearing payments - see console');
+            } finally {
+              clearBtn.disabled = false;
+              clearBtn.textContent = '🗑️ Clear Payments';
+            }
+          };
+        }
+    }
+  </script>
+</body>
+</html>

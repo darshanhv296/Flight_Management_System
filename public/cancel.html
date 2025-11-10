@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cancel Ticket</title>
+<style>
+body {
+  font-family: 'Poppins', sans-serif;
+  background: url('bg.jpg') center/cover no-repeat;
+  color: white;
+  margin: 0;
+  padding: 0;
+}
+.container {
+  background: rgba(0,0,0,0.65);
+  max-width: 600px;
+  margin: 80px auto;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,180,216,0.5);
+  text-align: center;
+}
+h1 { color: #00b4d8; margin-bottom: 25px; }
+.nav-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  position: absolute;
+  top: 15px;
+  left: 0;
+  padding: 0 15px;
+  box-sizing: border-box;
+}
+.nav-btn {
+  background: #00b4d8;
+  color: black;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0,180,216,0.5);
+  transition: 0.3s;
+}
+.nav-btn:hover { background: #0090b0; }
+.cancel-btn {
+  background: #ff4444;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: 0.3s;
+}
+.cancel-btn:hover { background: #cc0000; box-shadow: 0 0 15px #ff4444; }
+#refundMsg {
+  color: #00ff88;
+  font-size: 18px;
+  margin-top: 20px;
+  display: none;
+}
+.cancelled-text {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+.cancel-reason {
+  color: #ffb347;
+  font-weight: bold;
+  font-size: 16px;
+  margin-top: 5px;
+}
+select { width: 100%; padding: 8px; margin-top: 10px; border-radius: 6px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="nav-bar">
+    <button class="nav-btn" onclick="goBack()">⬅ Back</button>
+    <button class="nav-btn" onclick="goHome()">🏠 Home</button>
+  </div>
+
+  <h1>❌ Cancel Your Ticket</h1>
+
+  <div class="ticket" id="ticketBox"></div>
+
+  <div id="cancelSection">
+    <label for="reason"><strong>Select Cancellation Reason:</strong></label>
+    <select id="reason">
+      <option value="">-- Choose Reason --</option>
+      <option>Change in travel plan</option>
+      <option>Booked wrong flight</option>
+      <option>Personal emergency</option>
+      <option>Flight timing not suitable</option>
+      <option>Found cheaper flight</option>
+      <option>Weather issues</option>
+      <option>Medical reason</option>
+      <option>Unable to travel</option>
+      <option>Duplicate booking</option>
+      <option>Other reasons</option>
+    </select>
+
+    <button class="cancel-btn" onclick="confirmCancel()">Confirm Cancellation</button>
+  </div>
+
+  <div id="refundMsg">
+    💸 Your ticket has been <span class="cancelled-text">cancelled</span>.<br>
+    Refund will be processed within <strong>7 days</strong>.
+  </div>
+</div>
+
+<script>
+let ticket = JSON.parse(localStorage.getItem("ticketDetails")) || {};
+let username = localStorage.getItem("username") || "Guest";
+let user_id = localStorage.getItem("user_id") || "U001";
+
+function renderTicket() {
+  const statusHTML = ticket.cancelled 
+    ? '<span class="cancelled-text">Cancelled</span>' 
+    : '<span style="color:#00ff88;font-weight:bold;">Active</span>';
+
+  const reasonHTML = ticket.cancelled && ticket.cancelReason 
+    ? `<p class="cancel-reason">Reason: ${ticket.cancelReason}</p>` 
+    : '';
+
+  // prepare price HTML separately to avoid nested template complexity
+  let priceHtml = '';
+  if (ticket.totalAmount) {
+    priceHtml = `<div class="price-info"><p><strong>Total Paid:</strong> ₹${parseFloat(ticket.totalAmount).toFixed(2)}</p></div>`;
+  } else {
+    const base = parseFloat(ticket.price || 0);
+    const cls = ticket.class_type || ticket.classAdjustment || 'Economy';
+    let mult = 1;
+    if (cls === 'Business') mult = 1.5;
+    if (cls === 'First') mult = 2;
+    const subtotal = base * mult;
+    const gst = subtotal * 0.18;
+    const fees = ticket.convenienceFee ? parseFloat(ticket.convenienceFee) : 250;
+    const total = subtotal + gst + fees;
+    priceHtml = `<div class="price-info">
+      <p><strong>Base Fare:</strong> ₹${base.toFixed(2)}</p>
+      <p><strong>GST (18%):</strong> ₹${gst.toFixed(2)}</p>
+      <p><strong>Convenience Fee:</strong> ₹${fees.toFixed(2)}</p>
+      <p style="color:#00ff88;font-weight:bold;"><strong>Total Paid:</strong> ₹${total.toFixed(2)}</p>
+    </div>`;
+  }
+
+  document.getElementById("ticketBox").innerHTML = `
+    <p><strong>User:</strong> ${username} (${user_id})</p>
+    <p><strong>Ticket ID:</strong> ${ticket.ticket_id || "N/A"}</p>
+    <p><strong>Flight ID:</strong> ${ticket.flightId || "N/A"}</p>
+    <p><strong>Flight Name:</strong> ${ticket.fname || "N/A"}</p>
+    <p><strong>From:</strong> ${ticket.source || ticket.from || "N/A"}</p>
+    <p><strong>To:</strong> ${ticket.destination || ticket.to || "N/A"}</p>
+    <p><strong>Date:</strong> ${ticket.date || "N/A"}</p>
+    <p><strong>Duration:</strong> ${ticket.duration || "N/A"}</p>
+    ${priceHtml}
+    <p><strong>Status:</strong> ${statusHTML}</p>
+    ${reasonHTML}
+  `;
+}
+
+renderTicket();
+
+async function confirmCancel() {
+  const reason = document.getElementById("reason").value;
+  if(!reason){
+    alert("Please select a reason.");
+    return;
+  }
+
+  // mark cancelled locally and compute refund amount (match total paid)
+  ticket.cancelled = true;
+  ticket.cancelReason = reason;
+  // refund amount prefer explicit totalAmount, else compute like payment page
+  let refundAmount = null;
+  if (ticket.totalAmount) refundAmount = parseFloat(ticket.totalAmount);
+  else {
+    const base = parseFloat(ticket.price || 0);
+    const cls = ticket.class_type || ticket.classAdjustment || 'Economy';
+    let mult = 1;
+    if (cls === 'Business') mult = 1.5;
+    if (cls === 'First') mult = 2;
+    const subtotal = base * mult;
+    const gst = subtotal * 0.18;
+    const fees = ticket.convenienceFee ? parseFloat(ticket.convenienceFee) : 250;
+    refundAmount = +(subtotal + gst + fees).toFixed(2);
+  }
+  ticket.refundAmount = refundAmount;
+  localStorage.setItem("ticketDetails", JSON.stringify(ticket));
+
+  try {
+    const res = await fetch("/api/bookings/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        ticket_id: ticket.ticket_id,
+        cancelReason: reason,
+        username: username,
+        user_id: user_id,
+        refundAmount: ticket.refundAmount
+      })
+    });
+    const result = await res.json();
+    if(result.success) console.log("✅ Ticket cancelled in DB");
+    else console.error(result.message);
+  } catch(err){ console.error("DB update error:", err); }
+
+  renderTicket();
+  document.getElementById("cancelSection").style.display = "none";
+  document.getElementById("refundMsg").style.display = "block";
+
+  setTimeout(()=> window.location.href = "confirm.html", 1000);
+}
+
+function goHome() {
+  window.location.href = "user_dashboard.html";
+}
+function goBack() { window.history.back(); }
+</script>
+
+</body>
+</html>

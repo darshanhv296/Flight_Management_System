@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Booking History</title>
+<style>
+body {
+  font-family: 'Poppins', sans-serif;
+  background: #0b0c10;
+  color: #fff;
+  text-align: center;
+}
+.container {
+  width: 90%;
+  margin: 40px auto;
+  background: rgba(255,255,255,0.05);
+  padding: 20px;
+  border-radius: 10px;
+}
+h1 {
+  color: #00b4d8;
+}
+.ticket {
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  padding: 10px;
+  text-align: left;
+}
+.ticket:last-child {
+  border-bottom: none;
+}
+.status-confirmed {
+  color: #00ff99;
+  font-weight: bold;
+}
+.status-cancelled {
+  color: #ff4444;
+  font-weight: bold;
+}
+button {
+  margin-top: 20px;
+  padding: 10px 25px;
+  background: #00b4d8;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+button:hover {
+  background: #0090b0;
+}
+</style>
+</head>
+<body>
+
+<h1>🧾 Booking & Cancellation History</h1>
+
+<div class="container" id="historyBox">Loading...</div>
+
+<button onclick="goBack()">⬅ Back</button>
+
+<script>
+const SERVER_URL = "http://localhost:3000";
+
+async function loadHistory() {
+  const username = localStorage.getItem("username");
+  if (!username) {
+    alert("Please login first!");
+    window.location.href = "index.html";
+    return;
+  }
+
+  try {
+    const res = await fetch(`${SERVER_URL}/api/user/history`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username })
+    });
+    const data = await res.json();
+
+    const box = document.getElementById("historyBox");
+    if (!data.success || data.history.length === 0) {
+      box.innerHTML = "<p>No booking or cancellation history found.</p>";
+      return;
+    }
+
+    box.innerHTML = data.history.map(t => `
+      <div class="ticket">
+        <p><strong>Flight:</strong> ${t.flight_name}</p>
+        <p><strong>Route:</strong> ${t.source} → ${t.destination}</p>
+        <p><strong>Date:</strong> ${t.travel_date}</p>
+        <p><strong>Class:</strong> ${t.class_type}</p>
+        <p><strong>Status:</strong> <span class="status-${t.status.toLowerCase()}">${t.status}</span></p>
+        <p><strong>Seat:</strong> ${t.seat_no || "N/A"}</p>
+      </div>
+    `).join("");
+  } catch (err) {
+    console.error(err);
+    document.getElementById("historyBox").innerHTML = "<p>Error loading history.</p>";
+  }
+}
+
+function goBack() {
+  window.location.href = "user_dashboard.html";
+}
+
+loadHistory();
+</script>
+
+</body>
+</html>

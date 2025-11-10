@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FMS Booking Support</title>
+<style>
+  body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(to right, #0b3d91, #06172e);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: start;
+    padding: 40px 0;
+  }
+  .wrap {
+    width: 90%;
+    max-width: 600px;
+    background: rgba(0,0,0,0.6);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.7);
+    position: relative;
+  }
+  h1 { margin-top:0; text-align:center; font-size:24px; }
+  label { display:block; margin-top:15px; font-weight:bold; }
+  input[type=text], select, textarea {
+    width:100%; padding:10px; margin-top:5px; border-radius:6px; border:none; outline:none; font-size:14px;
+  }
+  textarea { min-height:100px; resize:none; }
+  .btn { margin-top:20px; padding:12px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; }
+  .btn-primary { background-color:#06b6d4; color:#001823; }
+  .btn-home { background-color:#7c3aed; color:#fff; position:absolute; top:20px; left:20px; padding:10px 14px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; }
+  .success { margin-top:15px; background-color: #0a4d29; padding:10px; border-radius:6px; color:#baf5d6; text-align:center; }
+</style>
+</head>
+<body>
+  <button class="btn-home" onclick="location.href='/home'">🏠 Home</button>
+  <div class="wrap">
+    <h1>Report Booking Issue</h1>
+
+    <form id="supportForm">
+      <label for="username">Your Name</label>
+      <input type="text" id="username" name="username" placeholder="John Doe" required>
+
+      <label for="email">Email</label>
+      <!-- Fixed inbuilt Gmail -->
+      <input type="email" id="email" name="email" value="fms.support@gmail.com" readonly>
+
+      <label for="reason">Reason / Problem type</label>
+      <select id="reason" name="reason" required>
+        <option value="">--Select--</option>
+        <option value="payment_failed">Payment Failed / Error</option>
+        <option value="timeout">Timeout / Slow Response</option>
+        <option value="wrong_info">Wrong Booking Details</option>
+        <option value="ui_bug">UI / Navigation Issue</option>
+        <option value="other">Other</option>
+      </select>
+
+      <label for="description">Description</label>
+      <textarea id="description" name="description" placeholder="Explain the issue here..." required></textarea>
+
+      <button type="submit" class="btn btn-primary">Send to Admin</button>
+      <div id="status"></div>
+    </form>
+
+    <div id="afterMsg"></div>
+  </div>
+
+<script>
+document.getElementById('supportForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const status = document.getElementById('status');
+  status.textContent = 'Sending report...';
+
+  const form = e.target;
+  const formData = {
+    username: form.username.value,
+    email: form.email.value, // fixed Gmail
+    reason: form.reason.value,
+    description: form.description.value,
+    diagnostics: {
+      ts: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      url: location.href
+    }
+  };
+
+  try {
+    // Send data to backend API (/api/support) which can forward to admin email
+    const resp = await fetch('/api/support', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+
+    if(!resp.ok) throw new Error('Server error');
+
+    const data = await resp.json();
+    status.textContent = '';
+    document.getElementById('afterMsg').innerHTML = `<div class="success">Report sent successfully. Ticket #${data.ticketId || 'N/A'}.</div>`;
+    form.reset();
+    // Keep the fixed Gmail
+    document.getElementById('email').value = 'fms.support@gmail.com';
+  } catch(err) {
+    status.textContent = 'Failed to send report. Try again.';
+    console.error(err);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Payment</title>
+<style>
+body {
+  background: url('bg.jpg') center/cover no-repeat fixed; /* ✅ fixed background */
+  font-family: 'Poppins', sans-serif;
+  color: white;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  background: rgba(0, 0, 0, 0.65);
+  max-width: 600px;
+  margin: 80px auto;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,180,216,0.5);
+  position: relative;
+  text-align: center;
+}
+
+h1 {
+  color: #00b4d8;
+  margin-bottom: 25px;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-top: 15px;
+}
+
+select,
+input,
+button {
+  width: 100%;
+  padding: 8px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 6px;
+}
+
+select,
+input {
+  background: rgba(255, 255, 255, 0.8);
+  color: #000;
+}
+
+button {
+  background: #00b4d8;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 0 10px rgba(0,180,216,0.4);
+}
+
+button:hover {
+  background: #0090b0;
+  box-shadow: 0 0 15px #00b4d8;
+}
+
+.nav-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  position: absolute;
+  top: 15px;
+  left: 0;
+  padding: 0 15px;
+  box-sizing: border-box;
+}
+
+.nav-btn {
+  background: #00b4d8;
+  color: black;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0,180,216,0.5);
+  transition: 0.3s;
+  width: auto;
+}
+
+.nav-btn:hover {
+  background: #0090b0;
+  box-shadow: 0 0 12px #00b4d8;
+}
+
+.success {
+  color: #00ff88;
+  font-size: 20px;
+  margin-top: 20px;
+  display: none;
+  animation: fadeIn 1s ease;
+}
+
+.error {
+  color: #ff4444;
+  font-size: 16px;
+  margin-top: 20px;
+  display: none;
+  animation: fadeIn 1s ease;
+}
+
+.processing {
+  color: #00b4d8;
+  font-size: 16px;
+  margin-top: 20px;
+  display: none;
+  animation: fadeIn 1s ease;
+}
+
+#upiSection,
+#cardSection,
+#cashSection {
+  display: none;
+  margin-top: 15px;
+  text-align: left;
+}
+
+.qr-box {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.qr-box img {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,255,255,0.3);
+}
+
+.qr-note {
+  font-size: 13px;
+  color: #ccc;
+  margin-top: 5px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+</style>
+
+
+</head>
+<body>
+
+<div class="container">
+  <div class="nav-bar">
+    <button class="nav-btn" onclick="goBack()">⬅ Back</button>
+    <button class="nav-btn" onclick="goHome()">🏠 Home</button>
+  </div>
+
+  <h1>💳 Payment Gateway</h1>
+
+  <div id="paymentSection">
+    <p><strong>Flight ID:</strong> <span id="flightId"></span></p>
+    <p><strong>Flight Name:</strong> <span id="fname"></span></p>
+    <p><strong>Date:</strong> <span id="date"></span></p>
+    <p><strong>Base Fare:</strong> ₹<span id="basePrice"></span></p>
+    <p><strong>Class Type:</strong> <span id="classType"></span></p>
+    <p><strong>GST (18%):</strong> ₹<span id="tax"></span></p>
+    <p><strong>Convenience Fee:</strong> ₹<span id="fees">250</span></p>
+    <p style="font-size: 1.2em; font-weight: bold; margin-top: 15px; color: #00b4d8;">
+      Total Amount: ₹<span id="price"></span>
+    </p>
+
+    <label for="mode">Select Payment Mode:</label>
+    <select id="mode" onchange="showPaymentFields()">
+      <option value="">-- Select Mode --</option>
+      <option value="UPI">UPI</option>
+      <option value="Card">Credit/Debit Card</option>
+      <option value="Cash">Cash</option>
+    </select>
+
+    <div id="upiSection">
+      <label for="upiApp">Select UPI App:</label>
+      <select id="upiApp" onchange="updateQR()">
+        <option value="Paytm">Paytm</option>
+        <option value="PhonePe">PhonePe</option>
+        <option value="GPay">Google Pay</option>
+      </select>
+
+      <label>Choose Payment Method:</label>
+      <select id="upiMethod" onchange="toggleUPIInput()">
+        <option value="id">Enter UPI ID</option>
+        <option value="qr">Scan QR Code</option>
+      </select>
+
+      <div id="upiIdInput">
+        <label for="upiId">Enter UPI ID:</label>
+        <input type="text" id="upiId" placeholder="example@upi">
+      </div>
+
+      <div id="qrSection" class="qr-box" style="display:none;">
+        <img id="qrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=upi://pay?pa=flightpay@upi" alt="QR Code">
+        <div class="qr-note">📷 Scan this QR with your selected UPI app</div>
+      </div>
+    </div>
+
+    <div id="cardSection">
+      <label for="cardNumber">Card Number:</label>
+      <input type="text" id="cardNumber" maxlength="16" placeholder="XXXX XXXX XXXX XXXX">
+      <label for="expiry">Expiry Date:</label>
+      <input type="month" id="expiry">
+      <label for="cvv">CVV:</label>
+      <input type="password" id="cvv" maxlength="3" placeholder="***">
+    </div>
+
+    <div id="cashSection">
+      <p>💵 Pay at the airport check-in counter.</p>
+    </div>
+
+    <button onclick="makePayment()">Confirm Payment</button>
+  </div>
+
+  <div id="successMsg" class="success">
+    ✅ Payment Successful! Redirecting to Ticket...
+  </div>
+  <div id="errorMsg" class="error">
+  </div>
+  <div id="processingMsg" class="processing">
+    💳 Processing payment...
+  </div>
+  <div id="authPrompt" style="display:none; margin-top:16px; color:#ffdede; background:rgba(0,0,0,0.6); padding:12px; border-radius:8px;">
+    <!-- Filled dynamically when user needs to login/register -->
+  </div>
+</div>
+
+<script src="script.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", async () => {
+  // Get ticket details first
+  const ticket = JSON.parse(localStorage.getItem("ticketDetails"));
+  if (!ticket) {
+    document.getElementById("paymentSection").innerHTML = "<p>No flight data found. Please select a flight again.</p>";
+    return;
+  }
+  if (!ticket) {
+    document.getElementById("paymentSection").innerHTML = "<p>No flight data found. Please select a flight again.</p>";
+    return;
+  }
+
+  // Generate a temporary user ID if not logged in
+  if (!ticket.user_id) {
+    ticket.user_id = 'TEMP-' + Date.now();
+  }
+  if (!ticket.username) {
+    ticket.username = 'Guest User';
+  }
+  
+  let basePrice = parseFloat(ticket.price || 0);
+  if (isNaN(basePrice) || basePrice <= 0) {
+    alert("Invalid ticket price");
+    return;
+  }
+  
+  // Add class type price adjustments
+  const classType = ticket.class_type || ticket.class_type || 'Economy';
+  let classMultiplier = 1;
+  if (classType === 'Business') {
+    classMultiplier = 1.5; // 50% more for business class
+  } else if (classType === 'First') {
+    classMultiplier = 2; // 100% more for first class
+  }
+  
+  let totalPrice = basePrice * classMultiplier;
+  
+  // Add taxes and fees
+  const taxes = totalPrice * 0.18; // 18% GST
+  const fees = 250; // Convenience fee
+  totalPrice = totalPrice + taxes + fees;
+
+  // Update ticket with all price details
+  ticket.finalPrice = totalPrice.toFixed(2);
+  ticket.baseFare = parseFloat(ticket.price);
+  ticket.gst = taxes.toFixed(2);
+  ticket.convenienceFee = fees;
+  ticket.totalAmount = totalPrice.toFixed(2);
+  ticket.classAdjustment = classType;
+  localStorage.setItem("ticketDetails", JSON.stringify(ticket));
+
+  const formattedDate = ticket.date.includes('/') ? ticket.date : new Date(ticket.date).toLocaleDateString("en-GB");
+
+  document.getElementById("flightId").innerText = ticket.flightId || ticket.flight_id || '';
+  document.getElementById("fname").innerText = ticket.fname || ticket.flight_name || '';
+  document.getElementById("date").innerText = formattedDate;
+  // Display base price and class type
+  document.getElementById("basePrice").innerText = ticket.price || ticket.baseFare || '';
+  document.getElementById("classType").innerText = classType;
+  document.getElementById("tax").innerText = taxes.toFixed(2);
+  document.getElementById("price").innerText = totalPrice.toFixed(2);
+
+  window.flightDetails = ticket;
+});
+
+function showPaymentFields() {
+  document.getElementById("upiSection").style.display = "none";
+  document.getElementById("cardSection").style.display = "none";
+  document.getElementById("cashSection").style.display = "none";
+  const mode = document.getElementById("mode").value;
+  if (mode === "UPI") document.getElementById("upiSection").style.display = "block";
+  else if (mode === "Card") document.getElementById("cardSection").style.display = "block";
+  else if (mode === "Cash") document.getElementById("cashSection").style.display = "block";
+}
+
+function toggleUPIInput() {
+  const method = document.getElementById("upiMethod").value;
+  document.getElementById("upiIdInput").style.display = (method === "id") ? "block" : "none";
+  document.getElementById("qrSection").style.display = (method === "qr") ? "block" : "none";
+}
+
+function updateQR() {
+  const app = document.getElementById("upiApp").value;
+  const qrImg = document.getElementById("qrImage");
+  const qrData = `upi://pay?pa=flightpay@${app.toLowerCase()}.upi&pn=FlightBooking`;
+  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrData)}`;
+}
+
+async function makePayment() {
+  const mode = document.getElementById("mode").value;
+  if (!mode) {
+    alert("⚠️ Please select a payment mode to continue.");
+    return;
+  }
+
+  if (mode === "UPI") {
+    const method = document.getElementById("upiMethod").value;
+    const upiId = document.getElementById("upiId").value.trim();
+    if (method === "id" && !upiId) {
+      alert("⚠️ Please enter your UPI ID to proceed.");
+      return;
+    }
+  }
+
+  if (mode === "Card") {
+    const num = document.getElementById("cardNumber").value.trim();
+    const cvv = document.getElementById("cvv").value.trim();
+    if (num.length !== 16 || cvv.length !== 3) {
+      alert("⚠️ Please enter valid card details.");
+      return;
+    }
+  }
+
+  document.getElementById("processingMsg").style.display = "block";
+  document.getElementById("errorMsg").style.display = "none";
+
+  const ticket = window.flightDetails;
+  if (!ticket.ticket_id) {
+    ticket.ticket_id = 'TKT-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    window.flightDetails = ticket;
+    localStorage.setItem('ticketDetails', JSON.stringify(ticket));
+  }
+
+  try {
+    // Use ticket's user info without verification
+    const user_id = ticket.user_id;
+    const username = ticket.username;
+
+    // Prepare payment data
+    const finalPaymentData = {
+      ticket_id: ticket.ticket_id,
+      amount: parseFloat(ticket.totalAmount || ticket.price),
+      mode: mode,
+      user_id: user_id,
+      flight_id: ticket.flightId,
+      booking_details: {
+        flight_name: ticket.fname,
+        source: ticket.source || ticket.from,
+        destination: ticket.destination || ticket.to,
+        date: ticket.date,
+        duration: ticket.duration,
+        class_type: ticket.class_type || 'Economy',
+        username: username
+      }
+    };
+
+    // Prepare payment data with registered user details
+    const paymentData = {
+      ticket_id: ticket.ticket_id,
+      amount: parseFloat(ticket.totalAmount || ticket.price),
+      mode: mode,
+      user_id: user_id,
+      flight_id: ticket.flightId,
+      booking_details: {
+        flight_name: ticket.fname,
+        source: ticket.source || ticket.from,
+        destination: ticket.destination || ticket.to,
+        date: ticket.date,
+        duration: ticket.duration,
+        class_type: ticket.class_type || 'Economy',
+        username: username
+      }
+    };
+
+    const paymentResp = await fetch('/api/payments/add', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(finalPaymentData)
+    });
+
+    const paymentResult = await paymentResp.json();
+    if (!paymentResult.success) {
+      throw new Error(paymentResult.error || 'Failed to save payment data');
+    }
+
+    document.getElementById("paymentSection").style.display = "none";
+    document.getElementById("successMsg").style.display = "block";
+
+    ticket.status = "Paid";
+    ticket.payment_id = paymentResult.payment_id;
+    ticket.payment_mode = mode;
+    localStorage.setItem("ticketDetails", JSON.stringify(ticket));
+
+    // Save payment mode to ticket details before redirecting
+    ticket.payment_mode = mode;
+    localStorage.setItem("ticketDetails", JSON.stringify(ticket));
+    
+    setTimeout(() => {
+      window.location.href = "confirm.html";
+    }, 2000);
+
+  } catch (error) {
+    alert("Payment failed: " + error.message);
+    console.error("Payment error:", error);
+    document.getElementById("processingMsg").style.display = "none";
+    document.getElementById("errorMsg").style.display = "block";
+    document.getElementById("errorMsg").innerText = error.message || 'Payment failed';
+  }
+}
+
+// ✅ Home button always redirects to user_dashboard.html
+function goHome() {
+  window.location.href = "user_dashboard.html";
+}
+function goBack() { window.history.back(); }
+</script>
+</body>
+</html>
