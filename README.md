@@ -47,9 +47,6 @@ Flight_Management_System/
 │   ├── index.html
 │   ├── payment.html
 │   ├── registration.html
-│   ├── request.html
-│   ├── support.html
-│   ├── ticket.html
 │   ├── user_dashboard.html
 │   └── user_registration.html
 ├── dbconfig.js
@@ -151,4 +148,5 @@ The system includes comprehensive error handling for:
 - Authentication failures
 - Invalid inputs
 - Server errors
+
 - Session management
